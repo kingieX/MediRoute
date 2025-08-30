@@ -1,0 +1,151 @@
+{
+  "backend_roadmap": [
+    {
+      "stage": 1,
+      "name": "Project Initialization",
+      "status": "pending",
+      "tasks": [
+        "Setup Node.js + TypeScript project",
+        "Install dependencies",
+        "Setup tsconfig.json, eslint, prettier",
+        "Create base folder structure"
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Environment & Config",
+      "status": "pending",
+      "tasks": [
+        "Create .env file (DB URL, JWT, Redis)",
+        "Centralize config (config/index.ts)",
+        "Setup logging"
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "Database Setup (Prisma + Postgres)",
+      "status": "pending",
+      "tasks": [
+        "Initialize Prisma schema",
+        "Create User, Department, Shift, Patient, Alert, EventLog models",
+        "Run first migration",
+        "Seed Admin user",
+        "Verify DB connection"
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Auth & Security",
+      "status": "pending",
+      "tasks": [
+        "Password hashing (bcrypt)",
+        "JWT auth (access + refresh)",
+        "Role-based access control middleware",
+        "Implement /auth/login",
+        "Implement /auth/refresh",
+        "Implement /auth/me"
+      ]
+    },
+    {
+      "stage": 5,
+      "name": "User Management",
+      "status": "pending",
+      "tasks": [
+        "Implement /users CRUD (Admin only)",
+        "Add input validation",
+        "Support pagination & filters"
+      ]
+    },
+    {
+      "stage": 6,
+      "name": "Departments",
+      "status": "pending",
+      "tasks": [
+        "Implement /departments CRUD",
+        "Add threshold + capacity handling"
+      ]
+    },
+    {
+      "stage": 7,
+      "name": "Shifts",
+      "status": "pending",
+      "tasks": [
+        "Implement /shifts CRUD",
+        "Auto-assign route → BullMQ job",
+        "Worker consumes job"
+      ]
+    },
+    {
+      "stage": 8,
+      "name": "Patients",
+      "status": "pending",
+      "tasks": [
+        "Implement /patients CRUD",
+        "Status updates (waiting → in_treatment → discharged)",
+        "Capacity enforcement"
+      ]
+    },
+    {
+      "stage": 9,
+      "name": "Alerts & Notifications",
+      "status": "pending",
+      "tasks": [
+        "Implement alert creation",
+        "Implement resolve alert",
+        "Store notification history",
+        "Emit via Socket.IO"
+      ]
+    },
+    {
+      "stage": 10,
+      "name": "Real-Time Socket.IO",
+      "status": "pending",
+      "tasks": [
+        "Setup Socket.IO server",
+        "Broadcast patient flow updates",
+        "Broadcast staff location updates"
+      ]
+    },
+    {
+      "stage": 11,
+      "name": "Analytics & Reports",
+      "status": "pending",
+      "tasks": [
+        "Aggregate stats (staff utilization, patient load)",
+        "Export reports (CSV, PDF)",
+        "Support filters (date, department)"
+      ]
+    },
+    {
+      "stage": 12,
+      "name": "Event Logs & Audit",
+      "status": "pending",
+      "tasks": [
+        "Track critical changes (who/what/when)",
+        "Store in event_logs table"
+      ]
+    },
+    {
+      "stage": 13,
+      "name": "Testing & QA",
+      "status": "pending",
+      "tasks": [
+        "Unit tests with Jest",
+        "Integration tests with Supertest",
+        "Mock Redis & Socket.IO in tests",
+        "Setup CI pipeline"
+      ]
+    },
+    {
+      "stage": 14,
+      "name": "Deployment Prep",
+      "status": "pending",
+      "tasks": [
+        "Create Dockerfile",
+        "Create docker-compose (API+DB+Redis)",
+        "Setup GitHub Actions workflow",
+        "Deploy staging environment"
+      ]
+    }
+  ]
+}

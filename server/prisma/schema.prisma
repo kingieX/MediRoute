@@ -1,0 +1,84 @@
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(NURSE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shifts    Shift[]
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  NURSE
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  capacity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  patients  Patient[]
+  shifts    Shift[]  // Added opposite relation field
+}
+
+model Shift {
+  id          String   @id @default(cuid())
+  userId      String
+  departmentId String
+  startTime   DateTime
+  endTime     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User       @relation(fields: [userId], references: [id])
+  department  Department @relation(fields: [departmentId], references: [id])
+}
+
+model Patient {
+  id           String   @id @default(cuid())
+  name         String
+  status       PatientStatus @default(WAITING)
+  departmentId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department   Department @relation(fields: [departmentId], references: [id])
+}
+
+enum PatientStatus {
+  WAITING
+  IN_TREATMENT
+  DISCHARGED
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  type      String
+  message   String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EventLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+}
