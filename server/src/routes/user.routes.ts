@@ -70,73 +70,88 @@ router.get('/', authMiddleware(['ADMIN']), async (_req: Request, res: Response) 
 
 /**
  * GET /users/:id
- * Fetch a single user by ID (Admin only)
+ * Admin → can fetch any user
+ * User  → can only fetch self
  */
-router.get('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
+router.get(
+  '/:id',
+  authMiddleware(['ADMIN', 'DOCTOR', 'NURSE']),
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const currentUser = (req as any).user;
 
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+      // Only admin or self
+      if (currentUser.role !== 'ADMIN' && currentUser.userId !== id) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      const user = await prisma.user.findUnique({
+        where: { id },
+        select: { id: true, email: true, role: true, createdAt: true, updatedAt: true },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      return res.json(user);
+    } catch (err) {
+      console.error('Error fetching user:', err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
-
-    return res.json(user);
-  } catch (err) {
-    console.error('Error fetching user:', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
+  },
+);
 
 /**
  * PUT /users/:id
- * Update a user (Admin only)
+ * Admin → can update any user
+ * User  → can only update self
  */
-router.put('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { email, role, password } = req.body;
+router.put(
+  '/:id',
+  authMiddleware(['ADMIN', 'DOCTOR', 'NURSE']),
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { email, password, role } = req.body;
+      const currentUser = (req as any).user;
 
-    const existingUser = await prisma.user.findUnique({ where: { id } });
-    if (!existingUser) {
-      return res.status(404).json({ error: 'User not found' });
+      // Only admin or self
+      if (currentUser.role !== 'ADMIN' && currentUser.userId !== id) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      // Non-admins cannot change role
+      if (currentUser.role !== 'ADMIN' && role) {
+        return res.status(403).json({ error: 'Only admin can change roles' });
+      }
+
+      let updateData: any = {};
+      if (email) updateData.email = email;
+      if (role) updateData.role = role;
+      if (password) {
+        updateData.password = await hashPassword(password);
+      }
+
+      const updated = await prisma.user.update({
+        where: { id },
+        // data: {
+        //   ...(email && { email }),
+        //   ...(password && { password }),
+        //   ...(role && { role }),
+        // },
+        data: updateData,
+        select: { id: true, email: true, role: true, updatedAt: true },
+      });
+
+      return res.json(updated);
+    } catch (err) {
+      console.error('Error updating user:', err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
-
-    let updateData: any = {};
-    if (email) updateData.email = email;
-    if (role) updateData.role = role;
-    if (password) {
-      updateData.password = await hashPassword(password);
-    }
-
-    const updated = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    return res.json(updated);
-  } catch (err) {
-    console.error('Error updating user:', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
+  },
+);
 
 /**
  * DELETE /users/:id

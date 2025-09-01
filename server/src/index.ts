@@ -7,6 +7,9 @@ import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import departmentRoutes from './routes/department.routes';
 import shiftRoutes from './routes/shift.routes';
+import patientRoutes from './routes/patient.routes';
+import alertRoutes from './routes/alert.routes';
+import logRoutes from './routes/log.routes';
 
 import { config } from './config';
 import { logger } from './utils/logger';
@@ -37,6 +40,15 @@ app.use('/departments', departmentRoutes);
 
 // Shift endpoint
 app.use('/shifts', shiftRoutes);
+
+// Patient endpoint
+app.use('/patients', patientRoutes);
+
+// Alert endpoint
+app.use('/alerts', alertRoutes);
+
+// Log endpoint
+app.use('/logs', logRoutes);
 
 // Start server
 async function startServer() {
