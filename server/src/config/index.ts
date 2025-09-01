@@ -11,7 +11,7 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(10),
 
   // allow either a string ("15m", "7d") or number (3600)
-  JWT_ACCESS_EXPIRES_IN: z.union([z.string(), z.number()]).default('15m'),
+  JWT_ACCESS_EXPIRES_IN: z.union([z.string(), z.number()]).default('1h'),
   JWT_REFRESH_EXPIRES_IN: z.union([z.string(), z.number()]).default('7d'),
 
   REDIS_URL: z.string().url(),

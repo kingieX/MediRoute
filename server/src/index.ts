@@ -4,6 +4,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/auth.routes';
+import userRoutes from './routes/user.routes';
+import departmentRoutes from './routes/department.routes';
+import shiftRoutes from './routes/shift.routes';
 
 import { config } from './config';
 import { logger } from './utils/logger';
@@ -25,6 +28,15 @@ app.get('/healthz', (_req, res) => {
 
 // Authentication endpoint
 app.use('/auth', authRoutes);
+
+// User endpoint
+app.use('/users', userRoutes);
+
+// Department endpoint
+app.use('/departments', departmentRoutes);
+
+// Shift endpoint
+app.use('/shifts', shiftRoutes);
 
 // Start server
 async function startServer() {
