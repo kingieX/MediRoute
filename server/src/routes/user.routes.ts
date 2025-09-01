@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware } from '../middlewares/auth';
 import { hashPassword } from '../utils/password';
+import { logEvent } from '../utils/loggerService';
 
 const router = Router();
 
@@ -38,6 +39,14 @@ router.post('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) 
       },
     });
 
+    // 🔹 Log event
+    const currentUser = (req as any).user;
+    await logEvent(
+      currentUser.userId,
+      'USER_REGISTERED',
+      `Created user ${user.email} with role ${role}`,
+    );
+
     return res.status(201).json(user);
   } catch (err) {
     console.error('Error creating user:', err);
@@ -62,6 +71,74 @@ router.get('/', authMiddleware(['ADMIN']), async (_req: Request, res: Response) 
     });
 
     return res.json(users);
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /users/user
+ * List all users (Admin only) with pagination, filters & sorting
+ * Query params:
+ *   - page (default: 1)
+ *   - limit (default: 10)
+ *   - role (optional: ADMIN, DOCTOR, NURSE)
+ *   - search (optional: email contains)
+ *   - sortBy (optional: email | role | createdAt | updatedAt)
+ *   - order (optional: asc | desc, default: desc)
+ */
+router.get('/user', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
+  try {
+    // Pagination
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    // Filters
+    const role = req.query.role as 'ADMIN' | 'DOCTOR' | 'NURSE' | undefined;
+    const search = req.query.search as string | undefined;
+
+    const where: any = {};
+    if (role) where.role = role;
+    if (search) where.email = { contains: search, mode: 'insensitive' };
+
+    // Sorting
+    const sortBy = (req.query.sortBy as string) || 'createdAt';
+    const order = (req.query.order as 'asc' | 'desc') || 'desc';
+
+    // Validate sortBy field
+    const validSortFields = ['email', 'role', 'createdAt', 'updatedAt'];
+    const orderBy: any = validSortFields.includes(sortBy)
+      ? { [sortBy]: order }
+      : { createdAt: 'desc' };
+
+    // Query with pagination, filters & sorting
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy,
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return res.json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      sortBy,
+      order,
+      data: users,
+    });
   } catch (err) {
     console.error('Error fetching users:', err);
     return res.status(500).json({ error: 'Internal server error' });
@@ -145,6 +222,13 @@ router.put(
         select: { id: true, email: true, role: true, updatedAt: true },
       });
 
+      // 🔹 Log event
+      if (currentUser.role === 'ADMIN') {
+        await logEvent(currentUser.userId, 'USER_UPDATED', `Admin updated user ${id}`);
+      } else {
+        await logEvent(currentUser.userId, 'PROFILE_UPDATED', `User updated own profile`);
+      }
+
       return res.json(updated);
     } catch (err) {
       console.error('Error updating user:', err);
@@ -160,6 +244,7 @@ router.put(
 router.delete('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const currentUser = (req as any).user;
 
     const existingUser = await prisma.user.findUnique({ where: { id } });
     if (!existingUser) {
@@ -167,6 +252,9 @@ router.delete('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Respo
     }
 
     await prisma.user.delete({ where: { id } });
+
+    // 🔹 Log event
+    await logEvent(currentUser.userId, 'USER_DELETED', `Deleted user ${id}`);
 
     return res.json({ message: 'User deleted successfully' });
   } catch (err) {

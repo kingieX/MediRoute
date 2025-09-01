@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware } from '../middlewares/auth';
+import { logEvent } from '../utils/loggerService';
 
 const router = Router();
 
@@ -11,6 +12,7 @@ const router = Router();
 router.post('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
   try {
     const { name, capacity } = req.body;
+    const currentUser = (req as any).user;
 
     if (!name || !capacity) {
       return res.status(400).json({ error: 'Name and capacity are required' });
@@ -33,6 +35,9 @@ router.post('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) 
         createdAt: true,
       },
     });
+
+    // 🔹 Log event
+    await logEvent(currentUser.userId, 'DEPARTMENT_CREATED', `Created department ${name}`);
 
     return res.status(201).json(department);
   } catch (err) {
@@ -127,6 +132,7 @@ router.put('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response
   try {
     const { id } = req.params;
     const { name, capacity } = req.body;
+    const currentUser = (req as any).user;
 
     const existing = await prisma.department.findUnique({ where: { id } });
     if (!existing) {
@@ -155,6 +161,9 @@ router.put('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response
       },
     });
 
+    // 🔹 Log event
+    await logEvent(currentUser.userId, 'DEPARTMENT_UPDATED', `Updated department ${id}`);
+
     return res.json(updated);
   } catch (err) {
     console.error('Error updating department:', err);
@@ -169,6 +178,7 @@ router.put('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response
 router.delete('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const currentUser = (req as any).user;
 
     const existing = await prisma.department.findUnique({ where: { id } });
     if (!existing) {
@@ -176,6 +186,9 @@ router.delete('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Respo
     }
 
     await prisma.department.delete({ where: { id } });
+
+    // 🔹 Log event
+    await logEvent(currentUser.userId, 'DEPARTMENT_DELETED', `Deleted department ${id}`);
 
     return res.json({ message: 'Department deleted successfully' });
   } catch (err) {

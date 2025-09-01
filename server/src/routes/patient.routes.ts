@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware } from '../middlewares/auth';
+import { logEvent } from '../utils/loggerService';
+import { CapacityService } from '../services/capacityService';
 
 const router = Router();
 
@@ -14,6 +16,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { name, departmentId, status } = req.body;
+      const currentUser = (req as any).user;
 
       if (!name || !departmentId) {
         return res.status(400).json({ error: 'name and departmentId are required' });
@@ -23,6 +26,9 @@ router.post(
       if (!department) {
         return res.status(404).json({ error: 'Department not found' });
       }
+
+      // ✅ Capacity check before creating patient
+      await CapacityService.checkCapacityBeforeAdmission(departmentId);
 
       const patient = await prisma.patient.create({
         data: {
@@ -38,6 +44,13 @@ router.post(
           createdAt: true,
         },
       });
+
+      // 🔹 Log event
+      await logEvent(
+        currentUser.userId,
+        'PATIENT_ADMITTED',
+        `Patient ${name} admitted to department ${departmentId}`,
+      );
 
       return res.status(201).json(patient);
     } catch (err) {
@@ -121,6 +134,12 @@ router.put(
     try {
       const { id } = req.params;
       const { name, status, departmentId } = req.body;
+      const currentUser = (req as any).user;
+
+      // ✅ If moving to a new department, enforce capacity
+      if (departmentId) {
+        await CapacityService.checkCapacityBeforeAdmission(departmentId);
+      }
 
       const patient = await prisma.patient.findUnique({ where: { id } });
       if (!patient) {
@@ -155,6 +174,13 @@ router.put(
         },
       });
 
+      // 🔹 Log event
+      await logEvent(
+        currentUser.userId,
+        'PATIENT_UPDATED',
+        `Updated patient ${id} (${status || 'no status change'})`,
+      );
+
       return res.json(updated);
     } catch (err) {
       console.error('Error updating patient:', err);
@@ -170,6 +196,7 @@ router.put(
 router.delete('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const currentUser = (req as any).user;
 
     const existing = await prisma.patient.findUnique({ where: { id } });
     if (!existing) {
@@ -177,6 +204,9 @@ router.delete('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Respo
     }
 
     await prisma.patient.delete({ where: { id } });
+
+    // 🔹 Log event
+    await logEvent(currentUser.userId, 'PATIENT_DELETED', `Deleted patient ${id}`);
 
     return res.json({ message: 'Patient deleted successfully' });
   } catch (err) {

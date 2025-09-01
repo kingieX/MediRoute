@@ -3,6 +3,7 @@ import { prisma } from '../db/client';
 import { comparePasswords } from '../utils/password';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt';
 import { authMiddleware } from '../middlewares/auth';
+import { logEvent } from '../utils/loggerService';
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     const isPasswordValid = await comparePasswords(password, user.password);
     if (!isPasswordValid) {
+      await logEvent(user.id, 'LOGIN_FAILED', `Invalid password for ${email}`);
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -37,6 +39,9 @@ router.post('/login', async (req: Request, res: Response) => {
     const refreshToken = signRefreshToken(payload);
 
     // (Optional: store refreshToken in DB for invalidation later)
+
+    // Log Event
+    await logEvent(user.id, 'LOGIN_SUCCESS', `User ${email} logged in`);
 
     return res.json({
       accessToken,

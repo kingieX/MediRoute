@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware } from '../middlewares/auth';
+import { logEvent } from '../utils/loggerService';
 
 const router = Router();
 
@@ -11,6 +12,7 @@ const router = Router();
 router.post('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
   try {
     const { userId, departmentId, startTime, endTime } = req.body;
+    const currentUser = (req as any).user;
 
     if (!userId || !departmentId || !startTime || !endTime) {
       return res
@@ -44,6 +46,13 @@ router.post('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) 
         createdAt: true,
       },
     });
+
+    // 🔹 Log event
+    await logEvent(
+      currentUser.userId,
+      'SHIFT_CREATED',
+      `Assigned shift to user ${userId} in department ${departmentId}`,
+    );
 
     return res.status(201).json(shift);
   } catch (err) {
@@ -116,6 +125,7 @@ router.put('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response
   try {
     const { id } = req.params;
     const { userId, departmentId, startTime, endTime } = req.body;
+    const currentUser = (req as any).user;
 
     const existing = await prisma.shift.findUnique({ where: { id } });
     if (!existing) {
@@ -154,6 +164,9 @@ router.put('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response
       },
     });
 
+    // 🔹 Log event
+    await logEvent(currentUser.userId, 'SHIFT_UPDATED', `Updated shift ${id}`);
+
     return res.json(updated);
   } catch (err) {
     console.error('Error updating shift:', err);
@@ -168,6 +181,7 @@ router.put('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response
 router.delete('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const currentUser = (req as any).user;
 
     const existing = await prisma.shift.findUnique({ where: { id } });
     if (!existing) {
@@ -175,6 +189,9 @@ router.delete('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Respo
     }
 
     await prisma.shift.delete({ where: { id } });
+
+    // 🔹 Log event
+    await logEvent(currentUser.userId, 'SHIFT_DELETED', `Deleted shift ${id}`);
 
     return res.json({ message: 'Shift deleted successfully' });
   } catch (err) {
