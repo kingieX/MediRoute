@@ -2,8 +2,40 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware } from '../middlewares/auth';
 import { logEvent } from '../utils/loggerService';
+import { shiftQueue } from '../queues/shiftQueue';
+import { logger } from '../utils/logger';
 
 const router = Router();
+
+/**
+ * POST /shifts/auto-assign
+ * Trigger auto-assignment job (Admin only)
+ */
+router.post('/auto-assign', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
+  try {
+    const { departmentId, date, strategy } = req.body;
+
+    if (!departmentId || !date) {
+      return res.status(400).json({ error: 'departmentId and date are required' });
+    }
+
+    const job = await shiftQueue.add('autoAssign', {
+      departmentId,
+      date,
+      strategy: strategy || 'round_robin',
+    });
+
+    logger.info(`Enqueued auto-assign job ${job.id} for department ${departmentId}`);
+
+    return res.json({
+      message: 'Auto-assign job queued successfully',
+      jobId: job.id,
+    });
+  } catch (err) {
+    logger.error({ err }, '❌ Error enqueuing auto-assign job');
+    return res.status(500).json({ error: 'Failed to queue auto-assign job' });
+  }
+});
 
 /**
  * POST /shifts

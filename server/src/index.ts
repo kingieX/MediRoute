@@ -14,6 +14,9 @@ import logRoutes from './routes/log.routes';
 import { config } from './config';
 import { logger } from './utils/logger';
 
+// Shift worker
+import './workers/shiftWorker';
+
 const app: Application = express();
 const prisma = new PrismaClient();
 const PORT = config.PORT;
