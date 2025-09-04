@@ -10,7 +10,7 @@
     "test": "jest",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "render-build": "npm install --include=dev && npm run build"
+    "render-build": "npm install --include=dev && npx prisma generate && npm run build"
   },
   "keywords": [],
   "author": "",
