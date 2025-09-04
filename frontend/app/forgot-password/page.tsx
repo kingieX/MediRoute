@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
@@ -10,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Stethoscope, ArrowLeft, Mail, CheckCircle } from "lucide-react";
 import Image from "next/image";
+import { forgotPassword } from "@/api/api";
+import { toast } from "sonner";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
@@ -38,10 +41,18 @@ const ForgotPasswordPage = () => {
 
     // Simulate API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await forgotPassword(email);
       setIsEmailSent(true);
-    } catch {
-      setError("An error occurred. Please try again.");
+      toast.success("Password reset link sent! Check your email.");
+    } catch (err: any) {
+      if (err.message.includes("Network Error")) {
+        setError("Network error. Please try again.");
+      } else {
+        setIsEmailSent(true);
+        toast.success(
+          "If an account with that email exists, a password reset link has been sent."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -182,18 +193,11 @@ const ForgotPasswordPage = () => {
       {/* Right Side - Hospital Image (Desktop Only) */}
       <div className="hidden lg:flex flex-1 relative bg-gradient-to-br from-blue-600 to-blue-800">
         <div className="absolute inset-0 bg-black/20"></div>
-        {/* <img
-          src="https://images.pexels.com/photos/1170979/pexels-photo-1170979.jpeg?auto=compress&cs=tinysrgb&w=1200"
-          alt="Hospital Staff Management"
-          className="w-full h-full object-cover"
-        />* */}
         <Image
-          //   src="/images/forgot-password.jpg"
           src="https://images.pexels.com/photos/1170979/pexels-photo-1170979.jpeg?auto=compress&cs=tinysrgb&w=1200"
           alt="Hospital staff looking at x-rays"
-          layout="fill"
-          objectFit="cover"
-          className="opacity-60"
+          fill
+          className="opacity-60 object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-800/40 to-transparent"></div>
 

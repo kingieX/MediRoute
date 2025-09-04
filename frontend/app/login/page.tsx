@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
@@ -9,8 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Stethoscope, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { loginUser } from "@/api/api";
+import { toast } from "sonner";
 
 const LoginPage = () => {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -45,19 +50,25 @@ const LoginPage = () => {
 
     // Simulate API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      // For demo purposes, show error for invalid credentials
-      if (
-        formData.email !== "admin@mediroute.com" ||
-        formData.password !== "password123"
-      ) {
-        setError("Invalid email or password");
-      } else {
-        // Successful login - redirect to dashboard
-        window.location.href = "/dashboard";
-      }
-    } catch {
-      setError("An error occurred. Please try again.");
+      // Call the API function to log in
+      const data = await loginUser(formData);
+
+      // Handle successful login
+      console.log("Login successful:", data);
+
+      // store tokens and user data
+      localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("refreshToken", data.refreshToken);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      toast.success("Login successful! Redirecting to dashboard...");
+
+      // Redirect to the dashboard page
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(
+        err.message || "An unexpected error occurred. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -164,49 +175,31 @@ const LoginPage = () => {
                   </Link>
                 </div>
               </form>
-
-              {/* <div className="mt-8 pt-6 border-t border-gray-200 text-center">
-                <p className="text-sm text-gray-600">
-                  Don't have an account?{" "}
-                  <Link
-                    href="/signup"
-                    className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
-                  >
-                    Sign up here
-                  </Link>
-                </p>
-              </div> */}
             </CardContent>
           </Card>
 
           {/* Demo Credentials */}
-          {/* <div className="bg-blue-50 p-4 rounded-lg text-center">
+          <div className="bg-blue-50 p-4 rounded-lg text-center">
             <p className="text-sm text-blue-800 font-medium mb-2">
               Demo Credentials
             </p>
             <p className="text-xs text-blue-600">
               Email: admin@mediroute.com
               <br />
-              Password: password123
+              Password: admin12345
             </p>
-          </div> */}
+          </div>
         </div>
       </div>
 
       {/* Right Side - Hospital Image (Desktop Only) */}
       <div className="hidden lg:flex flex-1 relative bg-gradient-to-br from-blue-600 to-blue-800">
         <div className="absolute inset-0 bg-black/20"></div>
-        {/* <img
-          src="https://images.pexels.com/photos/263402/pexels-photo-263402.jpeg?auto=compress&cs=tinysrgb&w=1200"
-          alt="Hospital Staff Management"
-          className="absolute inset-0 w-full h-full object-cover"
-        /> */}
         <Image
           src="/images/login.jpg"
           alt="Hospital staff looking at x-rays"
-          layout="fill"
-          objectFit="cover"
-          className="opacity-60"
+          fill
+          className="opacity-60 object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-800/40 to-transparent"></div>
 

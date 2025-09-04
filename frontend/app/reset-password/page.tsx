@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
@@ -11,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Stethoscope, Eye, EyeOff, CheckCircle, Lock } from "lucide-react";
 import Image from "next/image";
+import { resetPassword } from "@/api/api";
+import { toast } from "sonner";
 
 const ResetPasswordPage = () => {
   const searchParams = useSearchParams();
@@ -85,10 +88,14 @@ const ResetPasswordPage = () => {
 
     // Simulate API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await resetPassword(token, formData.password);
       setIsPasswordReset(true);
-    } catch (err) {
-      setError("An error occurred. Please try again.");
+      toast.success("Password updated successfully!");
+    } catch (err: any) {
+      const errorMessage =
+        err.message || "An unexpected error occurred. Please try again.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -311,18 +318,11 @@ const ResetPasswordPage = () => {
       {/* Right Side - Hospital Image (Desktop Only) */}
       <div className="hidden lg:flex flex-1 relative bg-gradient-to-br from-blue-600 to-blue-800">
         <div className="absolute inset-0 bg-black/20"></div>
-        {/* <img
-          src="https://images.pexels.com/photos/668298/pexels-photo-668298.jpeg?auto=compress&cs=tinysrgb&w=1200"
-          alt="Hospital Security Management"
-          className="w-full h-full object-cover"
-        /> */}
         <Image
           src="/images/forgot-password.jpg"
-          //   src="https://images.pexels.com/photos/668298/pexels-photo-668298.jpeg?auto=compress&cs=tinysrgb&w=1200"
           alt="Hospital staff looking at x-rays"
-          layout="fill"
-          objectFit="cover"
-          className="opacity-60"
+          fill
+          className="opacity-60 object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 via-blue-800/40 to-transparent"></div>
 
