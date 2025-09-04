@@ -34,7 +34,10 @@ model User {
   shifts    Shift[]
   logs      EventLog[]
 
-  // New field
+// New fields for password reset
+  resetToken        String?   @unique
+  resetTokenExpiry  DateTime?
+  
   currentLocation Zone?
 }
 

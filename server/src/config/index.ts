@@ -15,6 +15,12 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.union([z.string(), z.number()]).default('7d'),
 
   REDIS_URL: z.string().url(),
+
+  // Email
+  GMAIL_USER: z.string().email(),
+  GMAIL_APP_PASSWORD: z.string(),
+
+  FRONTEND_URL: z.string().url(),
 });
 
 const parsed = envSchema.safeParse(process.env);
