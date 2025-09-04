@@ -1,3 +1,10 @@
 {
-  "cSpell.words": ["cuid", "healthz", "mediroute", "supersecretjwtkey"]
+  "cSpell.words": [
+    "bullmq",
+    "cuid",
+    "healthz",
+    "mediroute",
+    "supersecretjwtkey",
+    "wrongpassword"
+  ]
 }

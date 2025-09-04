@@ -40,22 +40,48 @@ router.post('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) 
 
 /**
  * GET /logs
- * List all event logs (Admin only)
+ * Retrieve event logs with optional filters
+ * Query params:
+ *   - userId (filter by user)
+ *   - action (filter by action type)
+ *   - startDate, endDate (date range)
+ *   - page, pageSize (pagination)
  */
-router.get('/', authMiddleware(['ADMIN']), async (_req: Request, res: Response) => {
+router.get('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
+  const { userId, action, startDate, endDate, page = '1', pageSize = '20' } = req.query;
+
   try {
+    const filters: any = {};
+    if (userId) filters.userId = userId;
+    if (action) filters.action = action;
+    if (startDate && endDate) {
+      filters.createdAt = {
+        gte: new Date(startDate as string),
+        lte: new Date(endDate as string),
+      };
+    }
+
+    const skip = (parseInt(page as string, 10) - 1) * parseInt(pageSize as string, 10);
+    const take = parseInt(pageSize as string, 10);
+
     const logs = await prisma.eventLog.findMany({
+      where: filters,
       orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        userId: true,
-        action: true,
-        details: true,
-        createdAt: true,
+      skip,
+      take,
+      include: {
+        user: { select: { id: true, email: true, role: true } },
       },
     });
 
-    return res.json(logs);
+    const total = await prisma.eventLog.count({ where: filters });
+
+    return res.json({
+      page: parseInt(page as string, 10),
+      pageSize: take,
+      total,
+      logs,
+    });
   } catch (err) {
     console.error('Error fetching logs:', err);
     return res.status(500).json({ error: 'Internal server error' });

@@ -3,6 +3,7 @@ import { config } from '../config';
 import { prisma } from '../db/client';
 import { logger } from '../utils/logger';
 import Redis from 'ioredis';
+import { getIO } from '../sockets/socket';
 
 const redis = new Redis(config.REDIS_URL);
 
@@ -48,6 +49,10 @@ export const shiftWorker = new Worker(
       `Auto-assigned shift for ${user.email} (round-robin) in department ${departmentId}`,
     );
     // console.log('Shift: ', shift);
+
+    // 🔥 Emit event for new shift
+    getIO().emit('shift:created', job);
+
     return shift;
   },
   {

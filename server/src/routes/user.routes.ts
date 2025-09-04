@@ -3,6 +3,8 @@ import { prisma } from '../db/client';
 import { authMiddleware } from '../middlewares/auth';
 import { hashPassword } from '../utils/password';
 import { logEvent } from '../utils/loggerService';
+import { emitEvent } from '../sockets/socket';
+import { Zone } from '@prisma/client';
 
 const router = Router();
 
@@ -262,5 +264,50 @@ router.delete('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Respo
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+/**
+ * POST /users/:id/location
+ * Update staff location (REST fallback for testing)
+ */
+router.post(
+  '/:id/location',
+  authMiddleware(['ADMIN', 'DOCTOR', 'NURSE']),
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { location } = req.body;
+
+    if (!location) {
+      return res.status(400).json({ error: 'Location is required' });
+    }
+
+    // Validate location against Zone enum
+    if (!Object.values(Zone).includes(location)) {
+      return res.status(400).json({
+        error: `Invalid location. Must be one of: ${Object.values(Zone).join(', ')}`,
+      });
+    }
+
+    try {
+      const user = await prisma.user.update({
+        where: { id },
+        data: { currentLocation: location },
+      });
+
+      // Emit WebSocket event too
+      emitEvent('staff_location_update', {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        zone: user.currentLocation,
+        updatedAt: user.updatedAt,
+      });
+
+      return res.json({ message: 'Location updated', user });
+    } catch (err) {
+      console.error('❌ Error updating staff location:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+);
 
 export default router;

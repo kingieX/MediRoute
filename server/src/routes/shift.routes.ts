@@ -4,6 +4,7 @@ import { authMiddleware } from '../middlewares/auth';
 import { logEvent } from '../utils/loggerService';
 import { shiftQueue } from '../queues/shiftQueue';
 import { logger } from '../utils/logger';
+import { getIO } from '../sockets/socket';
 
 const router = Router();
 
@@ -14,6 +15,7 @@ const router = Router();
 router.post('/auto-assign', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
   try {
     const { departmentId, date, strategy } = req.body;
+    const currentUser = (req as any).user;
 
     if (!departmentId || !date) {
       return res.status(400).json({ error: 'departmentId and date are required' });
@@ -26,6 +28,13 @@ router.post('/auto-assign', authMiddleware(['ADMIN']), async (req: Request, res:
     });
 
     logger.info(`Enqueued auto-assign job ${job.id} for department ${departmentId}`);
+
+    // 🔹 Log event
+    await logEvent(
+      currentUser.userId,
+      'SHIFT_CREATED',
+      `Auto assigned shift to new user in department ${departmentId}`,
+    );
 
     return res.json({
       message: 'Auto-assign job queued successfully',
@@ -85,6 +94,9 @@ router.post('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) 
       'SHIFT_CREATED',
       `Assigned shift to user ${userId} in department ${departmentId}`,
     );
+
+    // 🔥 Emit event for new shift
+    getIO().emit('shift:created', shift);
 
     return res.status(201).json(shift);
   } catch (err) {
@@ -199,6 +211,9 @@ router.put('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response
     // 🔹 Log event
     await logEvent(currentUser.userId, 'SHIFT_UPDATED', `Updated shift ${id}`);
 
+    // 🔥 Emit event for shift update
+    getIO().emit('shift:updated', updated);
+
     return res.json(updated);
   } catch (err) {
     console.error('Error updating shift:', err);
@@ -220,10 +235,13 @@ router.delete('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Respo
       return res.status(404).json({ error: 'Shift not found' });
     }
 
-    await prisma.shift.delete({ where: { id } });
+    const shift = await prisma.shift.delete({ where: { id } });
 
     // 🔹 Log event
     await logEvent(currentUser.userId, 'SHIFT_DELETED', `Deleted shift ${id}`);
+
+    // 🔥 Emit event for shift deletion
+    getIO().emit('shift:deleted', shift);
 
     return res.json({ message: 'Shift deleted successfully' });
   } catch (err) {

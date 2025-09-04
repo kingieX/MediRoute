@@ -7,6 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Zone {
+  ER
+  ICU
+  WARD1
+  WARD2
+  OPD
+  LAB
+  PHARMACY
+  RECEPTION
+  THEATER
+  CAFETERIA
+  ADMIN_OFFICE
+  TRIAGE
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -18,6 +33,9 @@ model User {
   // Relations
   shifts    Shift[]
   logs      EventLog[]
+
+  // New field
+  currentLocation Zone?
 }
 
 enum Role {

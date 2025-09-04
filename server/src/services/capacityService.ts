@@ -35,7 +35,7 @@ export class CapacityService {
           message: `Department "${department.name}" is ${usage.toFixed(0)}% full`,
         },
       });
-      logger.warn(`⚠️ Capacity warning for ${department.name}: ${usage}%`);
+      logger.warn(`Capacity warning for ${department.name}: ${usage}%`);
     }
   }
 }

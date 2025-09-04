@@ -10,12 +10,19 @@ import shiftRoutes from './routes/shift.routes';
 import patientRoutes from './routes/patient.routes';
 import alertRoutes from './routes/alert.routes';
 import logRoutes from './routes/log.routes';
+import zoneRoutes from './routes/zone.routes';
+import analyticsRoutes from './routes/analytics.routes';
+
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 
 import { config } from './config';
 import { logger } from './utils/logger';
 
 // Shift worker
 import './workers/shiftWorker';
+import { initSocket } from './sockets/socket';
+import { initLocationChannel } from './sockets/location';
 
 const app: Application = express();
 const prisma = new PrismaClient();
@@ -53,6 +60,12 @@ app.use('/alerts', alertRoutes);
 // Log endpoint
 app.use('/logs', logRoutes);
 
+// Hospital zones endpoint
+app.use('/zones', zoneRoutes);
+
+// Analytics endpoint
+app.use('/analytics', analyticsRoutes);
+
 // Start server
 async function startServer() {
   try {
@@ -60,14 +73,42 @@ async function startServer() {
     await prisma.$connect();
     logger.info('Database connected');
 
-    const server = app.listen(PORT, () => {
-      logger.info(`Server running on http://localhost:${PORT}`);
+    // Create HTTP server from Express
+    const httpServer = http.createServer(app);
+
+    // Attach Socket.IO to HTTP server
+    // const io = new SocketIOServer(httpServer, {
+    //   cors: {
+    //     origin: '*', // allow all for now (lock down later)
+    //   },
+    // });
+
+    // io.on('connection', (socket) => {
+    //   logger.info(`Client connected: ${socket.id}`);
+
+    //   socket.on('hello', (data) => {
+    //     logger.info(`Hello event from client: ${JSON.stringify(data)}`);
+    //     socket.emit('broadcast', { msg: 'Hello from server!' });
+    //   });
+
+    //   socket.on('disconnect', () => {
+    //     logger.info(`Client disconnected: ${socket.id}`);
+    //   });
+    // });
+
+    const io = initSocket(httpServer);
+    // Inside startServer after socket init:
+    initLocationChannel();
+
+    // Start server
+    httpServer.listen(PORT, () => {
+      logger.info(`Server + Socket.IO running on http://localhost:${PORT}`);
     });
 
     // Graceful shutdown handling
     const shutdown = async (signal: string) => {
       logger.info(`Received ${signal}. Closing server...`);
-      server.close(async () => {
+      httpServer.close(async () => {
         logger.info('HTTP server closed.');
         try {
           await prisma.$disconnect();
@@ -82,7 +123,7 @@ async function startServer() {
     process.on('SIGINT', () => shutdown('SIGINT')); // Ctrl+C
     process.on('SIGTERM', () => shutdown('SIGTERM')); // kill command / Docker stop
   } catch (error: unknown) {
-    logger.error({ error }, '❌ Failed to connect to database');
+    logger.error({ error }, 'Failed to connect to database');
     process.exit(1);
   }
 }

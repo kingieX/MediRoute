@@ -3,6 +3,8 @@ import { prisma } from '../db/client';
 import { authMiddleware } from '../middlewares/auth';
 import { logEvent } from '../utils/loggerService';
 import { CapacityService } from '../services/capacityService';
+import { checkDepartmentCapacity } from '../middlewares/checkDepartmentCapacity';
+import { getIO } from '../sockets/socket';
 
 const router = Router();
 
@@ -13,6 +15,7 @@ const router = Router();
 router.post(
   '/',
   authMiddleware(['ADMIN', 'DOCTOR', 'NURSE']),
+  checkDepartmentCapacity,
   async (req: Request, res: Response) => {
     try {
       const { name, departmentId, status } = req.body;
@@ -28,7 +31,7 @@ router.post(
       }
 
       // ✅ Capacity check before creating patient
-      await CapacityService.checkCapacityBeforeAdmission(departmentId);
+      // await CapacityService.checkCapacityBeforeAdmission(departmentId);
 
       const patient = await prisma.patient.create({
         data: {
@@ -51,6 +54,9 @@ router.post(
         'PATIENT_ADMITTED',
         `Patient ${name} admitted to department ${departmentId}`,
       );
+
+      // 🔥 Emit real-time event
+      getIO().emit('patient:created', patient);
 
       return res.status(201).json(patient);
     } catch (err) {
@@ -130,6 +136,22 @@ router.get(
 router.put(
   '/:id',
   authMiddleware(['ADMIN', 'DOCTOR', 'NURSE']),
+  async (req: Request, res: Response, next) => {
+    try {
+      const { id } = req.params;
+      const { status, departmentId } = req.body;
+
+      if (status === 'WAITING' && departmentId) {
+        // enforce capacity only if trying to WAITING (occupying a slot)
+        return checkDepartmentCapacity(req, res, next);
+      }
+
+      next();
+    } catch (err) {
+      console.error('Error in capacity check:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  },
   async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
@@ -137,9 +159,9 @@ router.put(
       const currentUser = (req as any).user;
 
       // ✅ If moving to a new department, enforce capacity
-      if (departmentId) {
-        await CapacityService.checkCapacityBeforeAdmission(departmentId);
-      }
+      // if (departmentId) {
+      //   await CapacityService.checkCapacityBeforeAdmission(departmentId);
+      // }
 
       const patient = await prisma.patient.findUnique({ where: { id } });
       if (!patient) {
@@ -180,6 +202,9 @@ router.put(
         'PATIENT_UPDATED',
         `Updated patient ${id} (${status || 'no status change'})`,
       );
+
+      // 🔥 Emit real-time update
+      getIO().emit('patient:statusUpdated', patient);
 
       return res.json(updated);
     } catch (err) {
