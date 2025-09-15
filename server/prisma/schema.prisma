@@ -24,21 +24,28 @@ enum Zone {
 
 model User {
   id        String   @id @default(cuid())
+  name             String         @default("")
+  specialty    String? // e.g., "Cardiology", "Emergency Medicine"
+  avatarUrl    String?
   email     String   @unique
   password  String
   role      Role     @default(NURSE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  phone    String?
+  bio      String?
+  address  String?
+
+  resetToken        String?   @unique
+  resetTokenExpiry  DateTime?
+  currentLocation Zone?
+
   // Relations
   shifts    Shift[]
   logs      EventLog[]
-
-// New fields for password reset
-  resetToken        String?   @unique
-  resetTokenExpiry  DateTime?
-  
-  currentLocation Zone?
+  availability Availability[]
+  PatientAssignment PatientAssignment[]
 }
 
 enum Role {
@@ -51,6 +58,8 @@ model Department {
   id        String   @id @default(cuid())
   name      String   @unique
   capacity  Int
+  shiftLength Int     @default(8) // shift length in hours (e.g., 8, 12)
+  zone         Zone?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -59,18 +68,42 @@ model Department {
   shifts    Shift[]
 }
 
+enum ShiftStatus {
+  PENDING
+  ASSIGNED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
 model Shift {
   id           String   @id @default(cuid())
   userId       String
   departmentId String
   startTime    DateTime
   endTime      DateTime
+  status       ShiftStatus @default(PENDING)
+  notes        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   // Relations
   user        User       @relation(fields: [userId], references: [id])
   department  Department @relation(fields: [departmentId], references: [id])
+
+  PatientAssignment PatientAssignment[]
+}
+
+model Availability {
+  id           String    @id @default(cuid())
+  userId       String
+  startTime    DateTime
+  endTime      DateTime
+  isAvailable  Boolean   @default(true) // True for availability, false for unavailability/leave
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user         User      @relation(fields: [userId], references: [id])
 }
 
 model Patient {
@@ -83,6 +116,23 @@ model Patient {
 
   // Relations
   department   Department @relation(fields: [departmentId], references: [id])
+
+  PatientAssignment PatientAssignment[]
+}
+
+model PatientAssignment {
+  id           String    @id @default(cuid())
+  patientId    String
+  userId       String
+  shiftId      String? // Optional relation to the shift it was assigned during
+  startTime    DateTime
+  endTime      DateTime?
+  status       String    @default("IN_PROGRESS") // e.g., "IN_PROGRESS", "COMPLETED"
+  createdAt    DateTime  @default(now())
+
+  patient      Patient   @relation(fields: [patientId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
+  shift        Shift?    @relation(fields: [shiftId], references: [id])
 }
 
 enum PatientStatus {

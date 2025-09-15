@@ -215,9 +215,22 @@ router.get('/me', authMiddleware(), async (req: any, res: Response) => {
       where: { id: req.user.userId },
       select: {
         id: true,
+        name: true,
+        specialty: true,
+        avatarUrl: true,
         email: true,
         role: true,
         createdAt: true,
+        updatedAt: true,
+        phone: true,
+        bio: true,
+        address: true,
+        currentLocation: true,
+        // Include the linked models
+        shifts: true,
+        logs: true,
+        availability: true,
+        PatientAssignment: true,
       },
     });
 
@@ -225,10 +238,10 @@ router.get('/me', authMiddleware(), async (req: any, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    return res.json(user);
-  } catch (err) {
-    console.error('Me route error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.json(user);
+  } catch (error) {
+    console.error('Failed to fetch user profile:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

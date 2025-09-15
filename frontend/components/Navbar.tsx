@@ -42,9 +42,9 @@ const Navbar = () => {
             <Button asChild>
               <Link href="/login">Login</Link>
             </Button>
-            <Button asChild variant="default">
+            {/* <Button asChild variant="default">
               <Link href="/signup">Get Started</Link>
-            </Button>
+            </Button> */}
           </div>
 
           {/* Mobile Menu Button */}

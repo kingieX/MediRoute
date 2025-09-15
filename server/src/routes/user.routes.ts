@@ -1,12 +1,29 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db/client';
 import { authMiddleware } from '../middlewares/auth';
-import { hashPassword } from '../utils/password';
+import { comparePasswords, hashPassword } from '../utils/password';
 import { logEvent } from '../utils/loggerService';
 import { emitEvent } from '../sockets/socket';
 import { Zone } from '@prisma/client';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs/promises';
+import { logger } from '../utils/logger';
+import bcrypt from 'bcrypt';
+import { Console } from 'console';
 
 const router = Router();
+
+// Setup Multer for image storage
+const upload = multer({
+  dest: 'public/uploads/', // Temporary destination
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed!') as unknown as null, false);
+    }
+    cb(null, true);
+  },
+});
 
 /**
  * POST /users
@@ -14,9 +31,9 @@ const router = Router();
  */
 router.post('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password, role, name, specialty, avatarUrl } = req.body;
 
-    if (!email || !password || !role) {
+    if (!email || !password || !role || !name) {
       return res.status(400).json({ error: 'Email, password and role are required' });
     }
 
@@ -32,11 +49,17 @@ router.post('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) 
         email,
         password: hashed,
         role,
+        name,
+        specialty,
+        avatarUrl,
       },
       select: {
         id: true,
         email: true,
+        name: true,
         role: true,
+        specialty: true,
+        avatarUrl: true,
         createdAt: true,
       },
     });
@@ -66,7 +89,10 @@ router.get('/', authMiddleware(['ADMIN']), async (_req: Request, res: Response) 
       select: {
         id: true,
         email: true,
+        name: true,
         role: true,
+        specialty: true,
+        avatarUrl: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -124,7 +150,10 @@ router.get('/user', authMiddleware(['ADMIN']), async (req: Request, res: Respons
         select: {
           id: true,
           email: true,
+          name: true,
           role: true,
+          specialty: true,
+          avatarUrl: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -167,7 +196,25 @@ router.get(
 
       const user = await prisma.user.findUnique({
         where: { id },
-        select: { id: true, email: true, role: true, createdAt: true, updatedAt: true },
+        select: {
+          id: true,
+          name: true,
+          specialty: true,
+          avatarUrl: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+          phone: true,
+          bio: true,
+          address: true,
+          currentLocation: true,
+          // Include the linked models
+          shifts: true,
+          logs: true,
+          availability: true,
+          PatientAssignment: true,
+        },
       });
 
       if (!user) {
@@ -193,7 +240,8 @@ router.put(
   async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { email, password, role } = req.body;
+      const { email, password, role, name, specialty, avatarUrl, phone, bio, address } = req.body;
+      // console.log('Update request body:', req.body);
       const currentUser = (req as any).user;
 
       // Only admin or self
@@ -209,17 +257,18 @@ router.put(
       let updateData: any = {};
       if (email) updateData.email = email;
       if (role) updateData.role = role;
+      if (name) updateData.name = name;
+      if (specialty) updateData.specialty = specialty;
+      if (avatarUrl) updateData.avatarUrl = avatarUrl;
+      if (phone) updateData.phone = phone;
+      if (bio) updateData.bio = bio;
+      if (address) updateData.address = address;
       if (password) {
         updateData.password = await hashPassword(password);
       }
 
       const updated = await prisma.user.update({
         where: { id },
-        // data: {
-        //   ...(email && { email }),
-        //   ...(password && { password }),
-        //   ...(role && { role }),
-        // },
         data: updateData,
         select: { id: true, email: true, role: true, updatedAt: true },
       });
@@ -238,6 +287,113 @@ router.put(
     }
   },
 );
+
+/**
+ * POST /users/change-password
+ * Requires authentication
+ */
+router.post(
+  '/change-password',
+  authMiddleware(), // ✅ ensure logged in
+  async (req: Request, res: Response) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const currentUser = (req as any).user;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Current and new password are required' });
+      }
+
+      const user = await prisma.user.findUnique({ where: { id: currentUser.userId } });
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Check old password
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update user
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword },
+      });
+
+      logger.info(`User ${user.email} changed their password`);
+
+      return res.json({ message: 'Password updated successfully' });
+    } catch (err) {
+      logger.error(err, 'Error in change-password:');
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+);
+/**
+ * POST /users/:id/avatar
+ * Upload a profile image for a user.
+ */
+router.post('/:id/avatar', authMiddleware(), upload.single('profileImage'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUser = (req as any).user;
+
+    // Only allow admin or the user themselves to update
+    if (currentUser.role !== 'ADMIN' && currentUser.userId !== id) {
+      // Clean up the uploaded file if forbidden
+      if (req.file && req.file.path) {
+        await fs.unlink(req.file.path);
+      }
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file uploaded.' });
+    }
+
+    const newPath = path.join('uploads', `${Date.now()}-${req.file.originalname}`);
+    const fullPath = path.join(process.cwd(), 'public', newPath);
+
+    // Read and move the file
+    await fs.rename(req.file.path, fullPath);
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      // Clean up the uploaded file if user is not found
+      await fs.unlink(fullPath);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Delete the old profile image if it exists and is not the default
+    if (user.avatarUrl && user.avatarUrl.startsWith('/uploads')) {
+      const oldPath = path.join(process.cwd(), 'public', user.avatarUrl);
+      try {
+        await fs.unlink(oldPath);
+      } catch (e) {
+        console.warn(`Could not delete old file: ${oldPath}`);
+      }
+    }
+
+    // Update the user's avatar URL in the database
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { avatarUrl: `/${newPath}` }, // Store the relative URL
+    });
+
+    res.json({ url: updatedUser.avatarUrl });
+  } catch (err) {
+    console.error('Error uploading image:', err);
+    // Clean up any temporary file
+    if (req.file) {
+      await fs.unlink(req.file.path).catch((e) => console.error('Error cleaning up temp file:', e));
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 /**
  * DELETE /users/:id

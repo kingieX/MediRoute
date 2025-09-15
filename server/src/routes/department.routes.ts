@@ -11,7 +11,7 @@ const router = Router();
  */
 router.post('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
   try {
-    const { name, capacity } = req.body;
+    const { name, capacity, shiftLength } = req.body;
     const currentUser = (req as any).user;
 
     if (!name || !capacity) {
@@ -27,6 +27,7 @@ router.post('/', authMiddleware(['ADMIN']), async (req: Request, res: Response) 
       data: {
         name,
         capacity: Number(capacity),
+        shiftLength: shiftLength ? Number(shiftLength) : 8, // default 8h
       },
       select: {
         id: true,
@@ -57,8 +58,21 @@ router.get('/', authMiddleware(['ADMIN']), async (_req: Request, res: Response) 
         id: true,
         name: true,
         capacity: true,
+        shiftLength: true,
         createdAt: true,
         updatedAt: true,
+        _count: {
+          select: {
+            // This is the key part:
+            // Count the number of patients linked to each department
+            patients: {
+              where: {
+                // Only count patients who are not yet discharged
+                status: { not: 'DISCHARGED' },
+              },
+            },
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -86,6 +100,7 @@ router.get('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response
         id: true,
         name: true,
         capacity: true,
+        shiftLength: true,
         createdAt: true,
         updatedAt: true,
         patients: {
@@ -131,7 +146,7 @@ router.get('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response
 router.put('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, capacity } = req.body;
+    const { name, capacity, shiftLength } = req.body;
     const currentUser = (req as any).user;
 
     const existing = await prisma.department.findUnique({ where: { id } });
@@ -151,6 +166,7 @@ router.put('/:id', authMiddleware(['ADMIN']), async (req: Request, res: Response
       data: {
         ...(name && { name }),
         ...(capacity && { capacity: Number(capacity) }),
+        ...(shiftLength && { shiftLength: Number(shiftLength) }),
       },
       select: {
         id: true,

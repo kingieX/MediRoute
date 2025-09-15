@@ -23,6 +23,8 @@ import { logger } from './utils/logger';
 import './workers/shiftWorker';
 import { initSocket } from './sockets/socket';
 import { initLocationChannel } from './sockets/location';
+import { scheduleAllDepartmentsDaily } from './queues/scheduler';
+import path from 'path';
 
 const app: Application = express();
 const prisma = new PrismaClient();
@@ -30,9 +32,19 @@ const PORT = config.PORT;
 
 // Middlewares
 app.use(cors());
+// app.use(
+//   cors({
+//     origin: 'http://localhost:3000', // Allow requests from your frontend's URL
+//     optionsSuccessStatus: 200, // For legacy browser support
+//   }),
+// );
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
+
+// Use __dirname directly for CommonJS modules
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Health check
 app.get('/healthz', (_req, res) => {
@@ -72,6 +84,8 @@ async function startServer() {
     // Check DB connection before starting server
     await prisma.$connect();
     logger.info('Database connected');
+
+    await scheduleAllDepartmentsDaily();
 
     // Create HTTP server from Express
     const httpServer = http.createServer(app);

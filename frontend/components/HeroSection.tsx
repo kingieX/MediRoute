@@ -34,7 +34,7 @@ const HeroSection = () => {
 
             <div className="flex flex-col sm:flex-row gap-4">
               <Button asChild size="lg" className="text-lg px-8 py-6">
-                <Link href="/signup" className="flex items-center space-x-2">
+                <Link href="/login" className="flex items-center space-x-2">
                   <span>Get Started</span>
                   <ArrowRight className="h-5 w-5" />
                 </Link>

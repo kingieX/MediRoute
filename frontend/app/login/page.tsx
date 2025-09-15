@@ -54,7 +54,7 @@ const LoginPage = () => {
       const data = await loginUser(formData);
 
       // Handle successful login
-      console.log("Login successful:", data);
+      // console.log("Login successful:", data);
 
       // store tokens and user data
       localStorage.setItem("accessToken", data.accessToken);
@@ -64,7 +64,15 @@ const LoginPage = () => {
       toast.success("Login successful! Redirecting to dashboard...");
 
       // Redirect to the dashboard page
-      router.push("/dashboard");
+      if (data.user.role === "ADMIN") {
+        router.push("/dashboard/admin");
+      } else if (data.user.role === "DOCTOR" || data.user.role === "NURSE") {
+        router.push("/dashboard/staff");
+      } else {
+        setError("Unknown user role.");
+        localStorage.clear(); // Clear storage if role is invalid
+        setIsLoading(false);
+      }
     } catch (err: any) {
       setError(
         err.message || "An unexpected error occurred. Please try again."

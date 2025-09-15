@@ -123,6 +123,7 @@ router.get('/', authMiddleware(['ADMIN']), async (_req: Request, res: Response) 
       },
     });
 
+    // console.log('shifts Response:', shifts);
     return res.json(shifts);
   } catch (err) {
     console.error('Error fetching shifts:', err);

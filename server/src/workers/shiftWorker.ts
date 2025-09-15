@@ -35,13 +35,24 @@ export const shiftWorker = new Worker(
     // Save new index back to Redis
     await redis.set(key, nextIndex.toString());
 
+    const department = await prisma.department.findUnique({
+      where: { id: departmentId },
+    });
+
+    if (!department) {
+      throw new Error(`Department ${departmentId} not found`);
+    }
+
+    const shiftLengthHours = department.shiftLength || 8; // default fallback
+    const endTime = new Date(new Date(date).getTime() + shiftLengthHours * 60 * 60 * 1000);
+
     // Create shift for selected user
     const shift = await prisma.shift.create({
       data: {
         userId: user.id,
         departmentId,
         startTime: new Date(date),
-        endTime: new Date(new Date(date).getTime() + 8 * 60 * 60 * 1000), // 8h shift
+        endTime,
       },
     });
 

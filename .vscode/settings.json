@@ -2,9 +2,12 @@
   "cSpell.words": [
     "bullmq",
     "cuid",
+    "Depts",
     "healthz",
     "mediroute",
     "supersecretjwtkey",
+    "unreadalerts",
     "wrongpassword"
-  ]
+  ],
+  "postman.settings.dotenv-detection-notification-visibility": false
 }
