@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Eye, EyeOff } from "lucide-react";
 import { changePassword } from "@/api/api";
-import { useSidebar } from "../SidebarContext";
 
 interface SecurityTabProps {
   securityData: {

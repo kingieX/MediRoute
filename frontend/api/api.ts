@@ -2,10 +2,12 @@ import axios from "axios";
 import {
   Alert,
   AuthResponse,
+  CreateUserPayload,
   DepartmentWithPatientCount,
   Patient,
   RefreshResponse,
   Shift,
+  UpdateUserPayload,
   User,
   UserCredentials,
 } from "./types";
@@ -278,6 +280,98 @@ export const uploadProfileImage = async (
 };
 
 /**
+ * Fetches all users (Admin only).
+ * Requires 'ADMIN' role for authorization.
+ * @returns {Promise<User[]>} A list of user objects with limited details.
+ * @throws {Error} If the request fails or the user is not an Admin.
+ */
+export const fetchAllUsers = async (): Promise<User[]> => {
+  try {
+    // Uses axiosInstance which automatically handles the Authorization header
+    const response = await axiosInstance.get<User[]>("/users");
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const errorData = error.response.data as { error: string };
+      console.error("Fetch all users API Error:", errorData);
+      throw new Error(
+        errorData.error ||
+          "Failed to fetch users. Check your Admin permissions."
+      );
+    } else {
+      console.error("Fetch all users API Error:", error);
+      throw new Error(
+        "An unexpected error occurred while fetching the user list."
+      );
+    }
+  }
+};
+
+/**
+ * Creates a new staff user (Admin only).
+ *
+ * @param {CreateUserPayload} userData - The new user's details including password.
+ * @returns {Promise<User>} The created user object (excluding password).
+ * @throws {Error} If the request fails (e.g., missing fields, user exists, or no permission).
+ */
+export const createNewUser = async (
+  userData: CreateUserPayload
+): Promise<User> => {
+  try {
+    // Uses axiosInstance which automatically handles the Authorization header
+    const response = await axiosInstance.post<User>("/users", userData);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const errorData = error.response.data as { error: string };
+      console.error("Create user API Error:", errorData);
+      // Handles 400 (Bad Request), 409 (Conflict), 403 (Forbidden)
+      throw new Error(
+        errorData.error || "Failed to create user. Check input and permissions."
+      );
+    } else {
+      console.error("Create user API Error:", error);
+      throw new Error("An unexpected error occurred during user creation.");
+    }
+  }
+};
+
+/**
+ * Updates an existing user's details. Requires Admin permission to update any user,
+ * or the user ID must match the current authenticated user's ID for self-update.
+ *
+ * @param {string} id - The ID of the user to update.
+ * @param {UpdateUserPayload} payload - The fields to update (e.g., name, specialty, password).
+ * @returns {Promise<Partial<User>>} The partial updated user object (id, email, role, updatedAt).
+ * @throws {Error} If the request fails (e.g., forbidden, not found).
+ */
+export const updateUser = async (
+  id: string,
+  payload: UpdateUserPayload
+): Promise<Partial<User>> => {
+  try {
+    // Uses axiosInstance which automatically handles the Authorization header
+    const response = await axiosInstance.put<Partial<User>>(
+      `/users/${id}`,
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const errorData = error.response.data as { error: string };
+      console.error("Update user API Error:", errorData);
+      // Handles 403 (Forbidden: non-admin changing role), 403 (Forbidden: updating another user), etc.
+      throw new Error(
+        errorData.error || "Failed to update user. Check permissions and data."
+      );
+    } else {
+      console.error("Update user API Error:", error);
+      throw new Error("An unexpected error occurred during user update.");
+    }
+  }
+};
+
+/**
  * Fetches a user's details by their ID.
  *
  * @param {string} userId - The ID of the user to fetch.
@@ -296,6 +390,35 @@ export const getUserDetails = async (userId: string): Promise<User> => {
     } else {
       console.error("Get user details API Error:", error);
       throw new Error("An unexpected error occurred.");
+    }
+  }
+};
+
+/**
+ * Deletes a user by ID. Requires 'ADMIN' role for authorization.
+ *
+ * @param {string} id - The ID of the user to delete.
+ * @returns {Promise<{ message: string }>} A success message.
+ * @throws {Error} If the request fails (e.g., forbidden, not found).
+ */
+export const deleteUser = async (id: string): Promise<{ message: string }> => {
+  try {
+    // Uses axiosInstance which automatically handles the Authorization header
+    const response = await axiosInstance.delete<{ message: string }>(
+      `/users/${id}`
+    );
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const errorData = error.response.data as { error: string };
+      console.error("Delete user API Error:", errorData);
+      // Handles 403 (Forbidden), 404 (Not Found)
+      throw new Error(
+        errorData.error || "Failed to delete user. Check permissions and ID."
+      );
+    } else {
+      console.error("Delete user API Error:", error);
+      throw new Error("An unexpected error occurred during user deletion.");
     }
   }
 };

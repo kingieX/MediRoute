@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -17,13 +18,36 @@ import {
 } from "@/components/ui/select";
 import { Eye, EyeOff } from "lucide-react";
 
-const UserModal = ({ isOpen, setIsOpen, selectedUser, onSave }) => {
+// Assuming a simplified User type for the modal, since the full type wasn't provided
+interface SelectedUserType {
+  name: string;
+  email: string;
+  role: string;
+  status?: string;
+  specialty?: string | null;
+  avatarUrl?: string | null;
+  // ... other properties
+}
+
+const UserModal = ({
+  isOpen,
+  setIsOpen,
+  selectedUser,
+  onSave,
+}: {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  selectedUser: SelectedUserType | null;
+  onSave: (userForm: any) => void;
+}) => {
   const [userForm, setUserForm] = useState({
     name: "",
     email: "",
     role: "",
     password: "",
     status: "Active",
+    specialty: "", // 🎯 NEW: Added specialty
+    avatarUrl: "", // 🎯 NEW: Added avatarUrl
   });
   const [showPassword, setShowPassword] = useState(false);
 
@@ -32,9 +56,11 @@ const UserModal = ({ isOpen, setIsOpen, selectedUser, onSave }) => {
       setUserForm({
         name: selectedUser.name,
         email: selectedUser.email,
-        role: selectedUser.role,
+        role: selectedUser.role, // Assuming role is stored in uppercase already, otherwise convert here
         password: "",
-        status: selectedUser.status,
+        status: selectedUser.status || "Active",
+        specialty: selectedUser.specialty || "", // Initialize specialty
+        avatarUrl: selectedUser.avatarUrl || "", // Initialize avatarUrl
       });
     } else {
       setUserForm({
@@ -43,11 +69,22 @@ const UserModal = ({ isOpen, setIsOpen, selectedUser, onSave }) => {
         role: "",
         password: "",
         status: "Active",
+        specialty: "",
+        avatarUrl: "",
       });
     }
   }, [selectedUser]);
 
+  const handleChange = (field: string, value: string) => {
+    setUserForm((prev) => ({ ...prev, [field]: value }));
+  };
+
   const handleSave = () => {
+    // If creating a new user, password is required
+    if (!selectedUser && !userForm.password) {
+      // Validation will also happen in SettingsPage, but better to prevent the call here too.
+      // A notification should ideally be shown here, but we rely on `onSave` to handle it for now.
+    }
     onSave(userForm);
   };
 
@@ -56,7 +93,7 @@ const UserModal = ({ isOpen, setIsOpen, selectedUser, onSave }) => {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {selectedUser ? "Edit User" : "Add New User"}
+            {selectedUser ? "Edit User" : "Add New Staff User"}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -66,9 +103,7 @@ const UserModal = ({ isOpen, setIsOpen, selectedUser, onSave }) => {
               id="userName"
               placeholder="Enter full name"
               value={userForm.name}
-              onChange={(e) =>
-                setUserForm((prev) => ({ ...prev, name: e.target.value }))
-              }
+              onChange={(e) => handleChange("name", e.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -78,34 +113,52 @@ const UserModal = ({ isOpen, setIsOpen, selectedUser, onSave }) => {
               type="email"
               placeholder="user@mediroute.com"
               value={userForm.email}
-              onChange={(e) =>
-                setUserForm((prev) => ({ ...prev, email: e.target.value }))
-              }
+              onChange={(e) => handleChange("email", e.target.value)}
+              // Disable email editing for existing users as it's often a primary key
+              disabled={!!selectedUser}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="userRole">Role</Label>
             <Select
               value={userForm.role}
-              onValueChange={(value) =>
-                setUserForm((prev) => ({ ...prev, role: value }))
-              }
+              onValueChange={(value) => handleChange("role", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Admin">Administrator</SelectItem>
-                <SelectItem value="Doctor">Doctor</SelectItem>
-                <SelectItem value="Nurse">Nurse</SelectItem>
+                <SelectItem value="ADMIN">Administrator</SelectItem>
+                <SelectItem value="DOCTOR">Doctor</SelectItem>
+                <SelectItem value="NURSE">Nurse</SelectItem>
+                {/* PATIENT role is generally not created via admin user management */}
               </SelectContent>
             </Select>
           </div>
+          {/* 🎯 NEW FIELD: Specialty */}
+          <div className="space-y-2">
+            <Label htmlFor="userSpecialty">Specialty (Optional)</Label>
+            <Input
+              id="userSpecialty"
+              placeholder="e.g., Cardiology, General Practice"
+              value={userForm.specialty}
+              onChange={(e) => handleChange("specialty", e.target.value)}
+            />
+          </div>
+          {/* <div className="space-y-2">
+            <Label htmlFor="userAvatarUrl">Avatar URL (Optional)</Label>
+            <Input
+              id="userAvatarUrl"
+              placeholder="https://example.com/avatar.jpg"
+              value={userForm.avatarUrl}
+              onChange={(e) => handleChange("avatarUrl", e.target.value)}
+            />
+          </div> */}
           <div className="space-y-2">
             <Label htmlFor="userPassword">
               {selectedUser
                 ? "New Password (leave blank to keep current)"
-                : "Temporary Password"}
+                : "Temporary Password *"}
             </Label>
             <div className="relative">
               <Input
@@ -113,12 +166,7 @@ const UserModal = ({ isOpen, setIsOpen, selectedUser, onSave }) => {
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter password"
                 value={userForm.password}
-                onChange={(e) =>
-                  setUserForm((prev) => ({
-                    ...prev,
-                    password: e.target.value,
-                  }))
-                }
+                onChange={(e) => handleChange("password", e.target.value)}
               />
               <button
                 type="button"
@@ -133,13 +181,12 @@ const UserModal = ({ isOpen, setIsOpen, selectedUser, onSave }) => {
               </button>
             </div>
           </div>
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="userStatus">Status</Label>
             <Select
               value={userForm.status}
-              onValueChange={(value) =>
-                setUserForm((prev) => ({ ...prev, status: value }))
-              }
+              onValueChange={(value) => handleChange("status", value)}
+              disabled={!selectedUser} // Status is only relevant for existing users
             >
               <SelectTrigger>
                 <SelectValue />
@@ -149,13 +196,21 @@ const UserModal = ({ isOpen, setIsOpen, selectedUser, onSave }) => {
                 <SelectItem value="Inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
         </div>
         <div className="flex justify-end space-x-2">
           <Button variant="outline" onClick={() => setIsOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>
+          <Button
+            onClick={handleSave}
+            disabled={
+              !userForm.name ||
+              !userForm.email ||
+              !userForm.role ||
+              (!selectedUser && !userForm.password)
+            }
+          >
             {selectedUser ? "Update User" : "Create User"}
           </Button>
         </div>

@@ -57,6 +57,27 @@ export interface User {
   updatedAt: string;
 }
 
+export interface CreateUserPayload {
+  email: string;
+  password: string;
+  role: Role;
+  name: string;
+  specialty?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface UpdateUserPayload {
+  email?: string;
+  password?: string;
+  role?: Role;
+  name?: string;
+  specialty?: string | null;
+  avatarUrl?: string | null;
+  phone?: string | null;
+  bio?: string | null;
+  address?: string | null;
+}
+
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;

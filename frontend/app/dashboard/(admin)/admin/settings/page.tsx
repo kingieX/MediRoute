@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -23,6 +24,8 @@ import AuditLogsTab from "@/components/admin-components/settings-components/Audi
 import UserModal from "@/components/ui/modals/UserModal";
 import DepartmentModal from "@/components/ui/modals/DepartmentModal";
 import DeleteConfirmationModal from "@/components/ui/modals/DeleteConfirmationModal";
+import { createNewUser, deleteUser, fetchAllUsers } from "@/api/api";
+import { CreateUserPayload, User } from "@/api/types";
 
 const SettingsPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -30,48 +33,12 @@ const SettingsPage = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isDepartmentModalOpen, setIsDepartmentModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItem, setSelectedItem] = useState<User | null>(null);
   const [deleteType, setDeleteType] = useState("");
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: "Dr. Sarah Johnson",
-      email: "sarah.johnson@mediroute.com",
-      role: "Admin",
-      status: "Active",
-      lastLogin: "2025-01-06 09:30",
-      createdAt: "2024-12-01",
-    },
-    {
-      id: 2,
-      name: "Dr. John Smith",
-      email: "john.smith@mediroute.com",
-      role: "Doctor",
-      status: "Active",
-      lastLogin: "2025-01-06 08:45",
-      createdAt: "2024-12-15",
-    },
-    {
-      id: 3,
-      name: "Nurse Jane Doe",
-      email: "jane.doe@mediroute.com",
-      role: "Nurse",
-      status: "Active",
-      lastLogin: "2025-01-06 09:15",
-      createdAt: "2025-01-02",
-    },
-    {
-      id: 4,
-      name: "Dr. Emily Chen",
-      email: "emily.chen@mediroute.com",
-      role: "Doctor",
-      status: "Inactive",
-      lastLogin: "2025-01-05 16:20",
-      createdAt: "2024-11-20",
-    },
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
 
   const [departments, setDepartments] = useState([
     {
@@ -179,7 +146,7 @@ const SettingsPage = () => {
     },
   ]);
 
-  const addNotification = (type, message) => {
+  const addNotification = (type: string, message: string) => {
     const notification = {
       id: Date.now(),
       type,
@@ -193,7 +160,29 @@ const SettingsPage = () => {
     }, 5000);
   };
 
-  const handleSaveUser = (userForm) => {
+  // Fetch Users Logic
+  const fetchUsers = async () => {
+    try {
+      setIsLoadingUsers(true);
+      const fetchedUsers = await fetchAllUsers();
+      setUsers(fetchedUsers);
+    } catch (error: any) {
+      console.error("Failed to fetch users:", error);
+      addNotification(
+        "error",
+        error.message || "Failed to load user list. Check API server status."
+      );
+      setUsers([]); // Clear users on error
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleSaveUser = async (userForm: any) => {
     if (!userForm.name || !userForm.email || !userForm.role) {
       addNotification("error", "Please fill in all required fields");
       return;
@@ -209,36 +198,69 @@ const SettingsPage = () => {
         )
       );
       addNotification("success", `User ${userForm.name} updated successfully`);
-    } else {
-      // Add new user
-      const newUser = {
-        id: Date.now(),
-        ...userForm,
-        lastLogin: "Never",
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setUsers((prev) => [...prev, newUser]);
-      addNotification("success", `User ${userForm.name} created successfully`);
-    }
 
-    // Add audit log
-    const logEntry = {
-      id: Date.now(),
-      timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
-      user: "Dr. Sarah Johnson",
-      userRole: "Admin",
-      action: selectedItem ? "User Updated" : "User Created",
-      details: `${selectedItem ? "Updated" : "Created"} user: ${userForm.name}`,
-      category: "User Management",
-      severity: "Info",
-    };
-    setAuditLogs((prev) => [logEntry, ...prev]);
+      // Add audit log
+      const logEntry = {
+        id: Date.now(),
+        timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+        user: "Dr. Sarah Johnson",
+        userRole: "Admin",
+        action: selectedItem ? "User Updated" : "User Created",
+        details: `${selectedItem ? "Updated" : "Created"} user: ${
+          userForm.name
+        }`,
+        category: "User Management",
+        severity: "Info",
+      };
+      setAuditLogs((prev) => [logEntry, ...prev]);
+    } else {
+      if (!userForm.password) {
+        addNotification("error", "Password is required to create a new user.");
+        return;
+      }
+
+      const payload: CreateUserPayload = {
+        name: userForm.name,
+        email: userForm.email,
+        // The modal should provide uppercase roles, but we ensure it here just in case.
+        role: userForm.role.toUpperCase() as CreateUserPayload["role"],
+        password: userForm.password,
+        specialty: userForm.specialty || null,
+        avatarUrl: userForm.avatarUrl || null,
+      };
+
+      try {
+        const newUser = await createNewUser(payload);
+
+        // Update local state with the user object returned from the API
+        setUsers((prev) => [...prev, newUser]);
+        addNotification("success", `User ${newUser.name} created successfully`);
+
+        // Add audit log for creation (Mock)
+        const logEntry = {
+          id: Date.now(),
+          timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+          user: "Dr. Sarah Johnson",
+          userRole: "Admin",
+          action: "User Created",
+          details: `Created new user: ${newUser.name} (${newUser.email})`,
+          category: "User Management",
+          severity: "Info",
+        };
+        setAuditLogs((prev) => [logEntry, ...prev]);
+      } catch (error: any) {
+        console.error("Error creating user:", error);
+        addNotification("error", error.message || "Failed to create user.");
+        // Stop execution on API failure
+        return;
+      }
+    }
 
     setSelectedItem(null);
     setIsUserModalOpen(false);
   };
 
-  const handleSaveDepartment = (departmentForm) => {
+  const handleSaveDepartment = (departmentForm: any) => {
     if (
       !departmentForm.name ||
       !departmentForm.capacity ||
@@ -311,27 +333,43 @@ const SettingsPage = () => {
     setIsDepartmentModalOpen(false);
   };
 
-  const handleDelete = () => {
-    if (deleteType === "user") {
-      setUsers((prev) => prev.filter((user) => user.id !== selectedItem.id));
-      addNotification(
-        "success",
-        `User ${selectedItem.name} deleted successfully`
-      );
+  const handleDelete = async () => {
+    if (!selectedItem || !selectedItem.id) return;
 
-      // Add audit log
-      const logEntry = {
-        id: Date.now(),
-        timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
-        user: "Dr. Sarah Johnson",
-        userRole: "Admin",
-        action: "User Deleted",
-        details: `Deleted user: ${selectedItem.name}`,
-        category: "User Management",
-        severity: "Warning",
-      };
-      setAuditLogs((prev) => [logEntry, ...prev]);
+    if (deleteType === "user") {
+      try {
+        await deleteUser(selectedItem.id);
+
+        // On success, update UI state
+        setUsers((prev) => prev.filter((user) => user.id !== selectedItem.id));
+        addNotification(
+          "success",
+          `User ${selectedItem.name} deleted successfully`
+        );
+
+        // Add audit log (Mock locally)
+        const logEntry = {
+          id: Date.now(),
+          timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+          user: "Dr. Sarah Johnson", // Mock current user
+          userRole: "Admin",
+          action: "User Deleted",
+          details: `Deleted user: ${selectedItem.name}`,
+          category: "User Management",
+          severity: "Warning",
+        };
+        setAuditLogs((prev) => [logEntry, ...prev]);
+      } catch (error: any) {
+        console.error("Error deleting user:", error);
+        addNotification("error", error.message || "Failed to delete user.");
+        // We still need to clear the modal state, but stop further processing
+        setIsDeleteModalOpen(false);
+        setSelectedItem(null);
+        setDeleteType("");
+        return;
+      }
     } else if (deleteType === "department") {
+      // Existing mock department deletion (no API integration here yet)
       setDepartments((prev) =>
         prev.filter((dept) => dept.id !== selectedItem.id)
       );
@@ -359,25 +397,33 @@ const SettingsPage = () => {
     setDeleteType("");
   };
 
-  const openEditUser = (user) => {
+  const handleUserModalChange = (open: boolean) => {
+    setIsUserModalOpen(open); // When the dialog is closing (open is false), reset selectedItem to prevent stale data
+    if (!open) {
+      setSelectedItem(null);
+    }
+  };
+
+  const openEditUser = (user: User) => {
     setSelectedItem(user);
     setIsUserModalOpen(true);
   };
 
-  const openEditDepartment = (department) => {
+  const openEditDepartment = (department: any) => {
     setSelectedItem(department);
     setIsDepartmentModalOpen(true);
   };
 
-  const openDeleteModal = (item, type) => {
+  const openDeleteModal = (item: any, type: string) => {
     setSelectedItem(item);
     setDeleteType(type);
     setIsDeleteModalOpen(true);
   };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <div className="flex-1 lg:ml-0">
-        <TopNavigation setIsSidebarOpen={setIsSidebarOpen} />
+        <TopNavigation />
         <NotificationList notifications={notifications} />
 
         <main className="p-6">
@@ -415,7 +461,12 @@ const SettingsPage = () => {
                 users={users}
                 openEditUser={openEditUser}
                 openDeleteModal={openDeleteModal}
-                setIsUserModalOpen={setIsUserModalOpen}
+                // setIsUserModalOpen={setIsUserModalOpen}
+                setIsUserModalOpen={() => {
+                  setSelectedItem(null);
+                  setIsUserModalOpen(true);
+                }}
+                isLoadingUsers={isLoadingUsers}
               />
             </TabsContent>
 
@@ -441,12 +492,12 @@ const SettingsPage = () => {
         selectedUser={selectedItem}
         onSave={handleSaveUser}
       />
-      <DepartmentModal
+      {/* <DepartmentModal
         isOpen={isDepartmentModalOpen}
         setIsOpen={setIsDepartmentModalOpen}
         selectedDepartment={selectedItem}
         onSave={handleSaveDepartment}
-      />
+      /> */}
       <DeleteConfirmationModal
         isOpen={isDeleteModalOpen}
         setIsOpen={setIsDeleteModalOpen}
