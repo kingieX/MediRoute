@@ -207,7 +207,7 @@ const HospitalMapPage = () => {
             <MapSection
               selectedFloor={selectedFloor}
               filteredStaff={filteredStaff}
-              filteredPatients={filteredPatients}
+              filteredPatients={filteredPatients as any}
               rooms={mapData.rooms}
             />
             <div className="lg:col-span-1 space-y-6">
