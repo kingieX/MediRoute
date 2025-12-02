@@ -1,4 +1,3 @@
-/* eslint-disable */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -147,7 +146,7 @@ const AlertsNotificationsPage = () => {
   });
 
   // Helper functions remain in the parent component as they rely on its state
-  const addNotification = (type: string, message: string) => {
+  const addNotification = (type, message) => {
     const notification = {
       id: Date.now(),
       type,
@@ -160,7 +159,7 @@ const AlertsNotificationsPage = () => {
     }, 5000);
   };
 
-  const handleAcknowledgeAlert = (alertId: number) => {
+  const handleAcknowledgeAlert = (alertId) => {
     setActiveAlerts((prev) =>
       prev.map((alert) =>
         alert.id === alertId ? { ...alert, status: "Acknowledged" } : alert
@@ -169,7 +168,7 @@ const AlertsNotificationsPage = () => {
     addNotification("success", "Alert acknowledged successfully");
   };
 
-  const handleResolveAlert = (alertId: number) => {
+  const handleResolveAlert = (alertId) => {
     const alert = activeAlerts.find((a) => a.id === alertId);
     if (alert) {
       const historyEntry = {
