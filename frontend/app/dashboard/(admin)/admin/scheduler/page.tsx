@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SchedulerHeader } from "@/components/admin-components/scheduler-components/SchedulerHeader";
 import { ScheduleCalendar } from "@/components/admin-components/scheduler-components/ScheduleCalendar";
@@ -69,7 +69,7 @@ const StaffSchedulerPage = () => {
     },
   ]);
 
-  const [availableStaff, setAvailableStaff] = useState<Staff[]>([
+  const [availableStaff] = useState<Staff[]>([
     {
       id: 1,
       name: "Dr. Alice Johnson",

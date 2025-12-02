@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 import {
   Dialog,
   DialogContent,
@@ -7,13 +8,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 
+interface DeleteConfirmationModalProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  onDelete: () => void;
+  item?: { name?: string };
+  type: string;
+}
+
 const DeleteConfirmationModal = ({
   isOpen,
   setIsOpen,
   onDelete,
   item,
   type,
-}) => {
+}: DeleteConfirmationModalProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-md">

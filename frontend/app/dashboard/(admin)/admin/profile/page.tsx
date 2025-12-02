@@ -163,7 +163,7 @@ const ProfilePage = () => {
     }));
   };
 
-  // CORRECTED FUNCTION SIGNATURE
+
   const handleSavePersonalInformation = async (
     section: "personal",
     newData: any

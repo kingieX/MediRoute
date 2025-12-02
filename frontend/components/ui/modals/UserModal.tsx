@@ -46,8 +46,8 @@ const UserModal = ({
     role: "",
     password: "",
     status: "Active",
-    specialty: "", // 🎯 NEW: Added specialty
-    avatarUrl: "", // 🎯 NEW: Added avatarUrl
+    specialty: "",
+    avatarUrl: "",
   });
   const [showPassword, setShowPassword] = useState(false);
 
@@ -131,11 +131,9 @@ const UserModal = ({
                 <SelectItem value="ADMIN">Administrator</SelectItem>
                 <SelectItem value="DOCTOR">Doctor</SelectItem>
                 <SelectItem value="NURSE">Nurse</SelectItem>
-                {/* PATIENT role is generally not created via admin user management */}
               </SelectContent>
             </Select>
           </div>
-          {/* 🎯 NEW FIELD: Specialty */}
           <div className="space-y-2">
             <Label htmlFor="userSpecialty">Specialty (Optional)</Label>
             <Input

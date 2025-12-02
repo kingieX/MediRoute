@@ -2,19 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Calendar,
-  Users,
-  MapPin,
-  Bell,
-  BarChart3,
-  Settings,
-  Menu,
-  X,
-  Shield,
-  Building,
-  FileText,
-} from "lucide-react";
+import { Users, Building, FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TopNavigation from "@/components/admin-components/settings-components/TopNavigation";
 import NotificationList from "@/components/admin-components/settings-components/NotificationList";
