@@ -147,7 +147,7 @@ const AlertsNotificationsPage = () => {
   });
 
   // Helper functions remain in the parent component as they rely on its state
-  const addNotification = (type, message) => {
+  const addNotification = (type: string, message: string) => {
     const notification = {
       id: Date.now(),
       type,
