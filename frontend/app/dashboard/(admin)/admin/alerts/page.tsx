@@ -7,12 +7,21 @@ import OverviewStats from "@/components/admin-components/alerts-components/Overv
 import AlertTabs from "@/components/admin-components/alerts-components/AlertTabs";
 import NotificationList from "@/components/admin-components/alerts-components/NotificationList";
 
+// Define the structure of a single notification object
+interface Notification {
+  id: number;
+  type: string;
+  message: string;
+  timestamp: string;
+}
+
 const AlertsNotificationsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("All");
   const [selectedSeverity, setSelectedSeverity] = useState("All");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [notifications, setNotifications] = useState([]);
+  // const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activeAlerts, setActiveAlerts] = useState([
     {
       id: 1,
@@ -160,7 +169,7 @@ const AlertsNotificationsPage = () => {
     }, 5000);
   };
 
-  const handleAcknowledgeAlert = (alertId) => {
+  const handleAcknowledgeAlert = (alertId: number) => {
     setActiveAlerts((prev) =>
       prev.map((alert) =>
         alert.id === alertId ? { ...alert, status: "Acknowledged" } : alert
@@ -169,7 +178,7 @@ const AlertsNotificationsPage = () => {
     addNotification("success", "Alert acknowledged successfully");
   };
 
-  const handleResolveAlert = (alertId) => {
+  const handleResolveAlert = (alertId: number) => {
     const alert = activeAlerts.find((a) => a.id === alertId);
     if (alert) {
       const historyEntry = {
