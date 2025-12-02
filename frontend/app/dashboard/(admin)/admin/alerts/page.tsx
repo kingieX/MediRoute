@@ -146,7 +146,7 @@ const AlertsNotificationsPage = () => {
   });
 
   // Helper functions remain in the parent component as they rely on its state
-  const addNotification = (type, message) => {
+  const addNotification = (type: string, message: string) => {
     const notification = {
       id: Date.now(),
       type,
@@ -159,7 +159,7 @@ const AlertsNotificationsPage = () => {
     }, 5000);
   };
 
-  const handleAcknowledgeAlert = (alertId) => {
+  const handleAcknowledgeAlert = (alertId: number) => {
     setActiveAlerts((prev) =>
       prev.map((alert) =>
         alert.id === alertId ? { ...alert, status: "Acknowledged" } : alert
@@ -168,7 +168,7 @@ const AlertsNotificationsPage = () => {
     addNotification("success", "Alert acknowledged successfully");
   };
 
-  const handleResolveAlert = (alertId) => {
+  const handleResolveAlert = (alertId: number) => {
     const alert = activeAlerts.find((a) => a.id === alertId);
     if (alert) {
       const historyEntry = {
